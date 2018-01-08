@@ -69,9 +69,12 @@ _between_location = r"\d+\^\d+"
 
 _within_position = r"\(\d+\.\d+\)"
 _re_within_position = re.compile(_within_position)
+_within_position_solo = r"\d+\.\d+"  # Roberto Tagliabue, patch for bug 1490
+_re_within_position_solo = re.compile(_within_position_solo)  # Roberto Tagliabue, patch for bug 1490
 _within_location = r"([<>]?\d+|%s)\.\.([<>]?\d+|%s)" \
                    % (_within_position, _within_position)
 assert _re_within_position.match("(3.9)")
+assert _re_within_position_solo.match("3.9")  # Roberto Tagliabue, patch for bug 1490
 assert re.compile(_within_location).match("(3.9)..10")
 assert re.compile(_within_location).match("26..(30.33)")
 assert re.compile(_within_location).match("(13.19)..(20.28)")
@@ -94,9 +97,9 @@ _simple_location = r"\d+\.\.\d+"
 _re_simple_location = re.compile(r"^%s$" % _simple_location)
 _re_simple_compound = re.compile(r"^(join|order|bond)\(%s(,%s)*\)$"
                                  % (_simple_location, _simple_location))
-_complex_location = r"([a-zA-Z][a-zA-Z0-9_\.\|]*[a-zA-Z0-9]?\:)?(%s|%s|%s|%s|%s)" \
+_complex_location = r"([a-zA-Z][a-zA-Z0-9_\.\|]*[a-zA-Z0-9]?\:)?(%s|%s|%s|%s|%s|%s)" \
                     % (_pair_location, _solo_location, _between_location,
-                       _within_location, _oneof_location)
+                       _within_location, _oneof_location, _within_position_solo)  # Roberto Tagliabue, patch for bug 1490
 _re_complex_location = re.compile(r"^%s$" % _complex_location)
 _possibly_complemented_complex_location = r"(%s|complement\(%s\))" \
                                           % (_complex_location, _complex_location)
@@ -122,6 +125,7 @@ assert not _re_simple_compound.match("join(1475..1577,2841..2986,3074..3193,3314
 assert not _re_simple_compound.match("test(1..69,1308..1465)")
 assert not _re_simple_compound.match("complement(1..69)")
 assert not _re_simple_compound.match("(1..69)")
+assert _re_complex_location.match("3.9")  # Roberto Tagliabue, patch for bug 1490
 assert _re_complex_location.match("(3.9)..10")
 assert _re_complex_location.match("26..(30.33)")
 assert _re_complex_location.match("(13.19)..(20.28)")
@@ -217,6 +221,15 @@ def _pos(pos_str, offset=0):
         return SeqFeature.AfterPosition(int(pos_str[1:]) + offset)
     elif _re_within_position.match(pos_str):
         s, e = pos_str[1:-1].split(".")
+        s = int(s) + offset
+        e = int(e) + offset
+        if offset == -1:
+            default = s
+        else:
+            default = e
+        return SeqFeature.WithinPosition(default, left=s, right=e)
+    elif _re_within_position_solo.match(pos_str):  # Roberto Tagliabue, patch for bug 1490
+        s, e = pos_str.split(".")
         s = int(s) + offset
         e = int(e) + offset
         if offset == -1:
