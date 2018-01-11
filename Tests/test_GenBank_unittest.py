@@ -353,7 +353,13 @@ class LineOneTests(unittest.TestCase):
             self.assertEqual(d, div,
                              "Wrong division %r not %r from %r" % (d, div, line))
 
-
+    def test_within_position_warning(self):
+        """Test for bug 1490 (location "101.110" unparsable)"""
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", BiopythonParserWarning)
+            rec = SeqIO.read(path.join("GenBank", "test_bug1490.gb"), "genbank")
+            self.assertEqual("[(100.109):(101.110)](+)", str(rec.features[1].location))
+			
 class OutputTests(unittest.TestCase):
     """GenBank output tests."""
 
